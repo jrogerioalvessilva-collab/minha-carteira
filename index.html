@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Sistema completo de gestão de carteira de investimentos">
+    <meta name="theme-color" content="#10b981">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Minha Carteira">
+    
+    <title>Gestão de Carteira - Investimentos</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        * {
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            overscroll-behavior: none;
+            touch-action: pan-y;
+        }
+        
+        .install-prompt {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #10b981, #06b6d4);
+            color: white;
+            padding: 16px 24px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            z-index: 1000;
+            display: none;
+            animation: slideUp 0.3s ease;
+            max-width: 90%;
+        }
+        
+        @keyframes slideUp {
+            from { transform: translateX(-50%) translateY(100px); opacity: 0; }
+            to { transform: translateX(-50%) translateY(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body class="bg-slate-900">
+    <div id="root">
+        <div class="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white p-4">
+            <div class="max-w-7xl mx-auto">
+                <div class="mb-6">
+                    <h1 class="text-3xl font-bold mb-2 bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
+                        Gestão de Carteira
+                    </h1>
+                    <p class="text-slate-400 text-sm">Carregando sistema...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="installPrompt" class="install-prompt">
+        <p class="font-semibold mb-2">📱 Instalar aplicativo?</p>
+        <p class="text-sm mb-3 opacity-90">Adicione à tela inicial para acesso rápido</p>
+        <div class="flex gap-2">
+            <button id="installBtn" class="bg-white text-emerald-600 px-4 py-2 rounded-lg font-medium text-sm">
+                Instalar
+            </button>
+            <button id="dismissBtn" class="bg-white/20 px-4 py-2 rounded-lg font-medium text-sm">
+                Agora não
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Dados da carteira
+        const defaultAssets = [
+            { ticker: 'VGIA11', type: 'FIAgro', qty: 2000, avgPrice: 9.52, currentPrice: 9.51, invested: 19020.00, current: 19020.00, pl: 0, plPercent: 0 },
+            { ticker: 'RZAG11', type: 'FIAgro', qty: 652, avgPrice: 9.37, currentPrice: 9.30, invested: 6108.58, current: 6063.60, pl: -44.98, plPercent: -0.74 },
+            { ticker: 'AAZQ11', type: 'FIAgro', qty: 628, avgPrice: 8.26, currentPrice: 7.62, invested: 5186.11, current: 4785.36, pl: -400.75, plPercent: -7.73 },
+            { ticker: 'DCRA11', type: 'FIAgro', qty: 201, avgPrice: 8.83, currentPrice: 7.19, invested: 1775.04, current: 1445.19, pl: -329.85, plPercent: -18.58 },
+            { ticker: 'VIUR11', type: 'FII', qty: 118, avgPrice: 6.39, currentPrice: 5.65, invested: 753.83, current: 666.70, pl: -87.13, plPercent: -11.56 },
+            { ticker: 'GAME11', type: 'FII', qty: 45, avgPrice: 8.93, currentPrice: 8.48, invested: 401.90, current: 381.60, pl: -20.30, plPercent: -5.05 },
+            { ticker: 'GARE11', type: 'FII', qty: 40, avgPrice: 9.01, currentPrice: 9.01, invested: 360.51, current: 360.40, pl: -0.11, plPercent: -0.03 },
+            { ticker: 'KISU11', type: 'FII', qty: 40, avgPrice: 7.98, currentPrice: 6.81, invested: 319.10, current: 272.40, pl: -46.70, plPercent: -14.63 },
+            { ticker: 'MCRE11', type: 'FII', qty: 24, avgPrice: 9.43, currentPrice: 8.81, invested: 226.40, current: 211.44, pl: -14.96, plPercent: -6.61 },
+            { ticker: 'BBAS3', type: 'Ação', qty: 402, avgPrice: 28.23, currentPrice: 22.08, invested: 11349.98, current: 8876.16, pl: -2473.82, plPercent: -21.80 },
+            { ticker: 'LFTS11', type: 'FII', qty: 49, avgPrice: 136.17, currentPrice: 140.53, invested: 6672.20, current: 6885.97, pl: 213.77, plPercent: 3.20 },
+            { ticker: 'CMIN3', type: 'Ação', qty: 400, avgPrice: 4.94, currentPrice: 5.54, invested: 1974.56, current: 2216.00, pl: 241.44, plPercent: 12.23 },
+            { ticker: 'CMIG4', type: 'Ação', qty: 200, avgPrice: 11.02, currentPrice: 11.15, invested: 2204.54, current: 2230.00, pl: 25.46, plPercent: 1.15 },
+            { ticker: 'BTC', type: 'Cripto', qty: 0.0002, avgPrice: 266885.78, currentPrice: 603720.53, invested: 41.76, current: 94.46, pl: 52.70, plPercent: 126.21 },
+            { ticker: 'BNB', type: 'Cripto', qty: 0.0935, avgPrice: 3196.64, currentPrice: 5333.75, invested: 299.01, current: 498.91, pl: 199.90, plPercent: 66.85 }
+        ];
+
+        const defaultOptions = [
+            { ticker: 'CSNAJ849', underlying: 'CSNA3', type: 'CALL', strike: 8.49, qty: -700, avgPrice: 0.23, currentPrice: 0.10, expiry: '2025-10-17', invested: -160.80, current: -70.00, pl: 90.80, plPercent: 56.47 },
+            { ticker: 'CMINW497', underlying: 'CMIN3', type: 'PUT', strike: 4.97, qty: -400, avgPrice: 0.11, currentPrice: 0.02, expiry: '2025-11-21', invested: -43.95, current: -8.00, pl: 35.95, plPercent: 81.80 },
+            { ticker: 'PETRV318', underlying: 'PETR4', type: 'PUT', strike: 31.22, qty: -100, avgPrice: 0.46, currentPrice: 0.41, expiry: '2025-10-17', invested: -45.94, current: -41.00, pl: 4.94, plPercent: 10.76 },
+            { ticker: 'ABEVJ137', underlying: 'ABEV3', type: 'CALL', strike: 13.61, qty: 100, avgPrice: 0.82, currentPrice: 0.01, expiry: '2025-10-17', invested: 82.10, current: 1.00, pl: -81.10, plPercent: -98.78 }
+        ];
+
+        // Carregar ou inicializar dados
+        let allAssets = [];
+        let allOptions = [];
+        
+        try {
+            const savedAssets = localStorage.getItem('portfolioAssets');
+            const savedOptions = localStorage.getItem('portfolioOptions');
+            
+            allAssets = savedAssets ? JSON.parse(savedAssets) : defaultAssets;
+            allOptions = savedOptions ? JSON.parse(savedOptions) : defaultOptions;
+        } catch (e) {
+            allAssets = defaultAssets;
+            allOptions = defaultOptions;
+        }
+
+        // Calcular estatísticas
+        function calculateStats(assets) {
+            const totalInvested = assets.reduce((sum, a) => sum + a.invested, 0);
+            const totalCurrent = assets.reduce((sum, a) => sum + a.current, 0);
+            const totalPL = totalCurrent - totalInvested;
+            const plPercent = (totalPL / totalInvested) * 100;
+            
+            return { totalInvested, totalCurrent, totalPL, plPercent };
+        }
+
+        function getDaysToExpiry(expiryDate) {
+            const days = Math.ceil((new Date(expiryDate) - new Date()) / (1000 * 60 * 60 * 24));
+            return days;
+        }
+
+        // Renderizar interface
+        function render() {
+            const stats = calculateStats(allAssets);
+            
+            // Contar opções vencendo
+            const expiringSoon = allOptions.filter(opt => {
+                const days = getDaysToExpiry(opt.expiry);
+                return days <= 30 && days > 0;
+            }).length;
+
+            const html = `
+                <div class="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white p-4">
+                    <div class="max-w-7xl mx-auto">
+                        <div class="mb-6">
+                            <h1 class="text-3xl font-bold mb-2 bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
+                                Gestão de Carteira
+                            </h1>
+                            <p class="text-slate-400 text-sm">Seus investimentos em um só lugar</p>
+                        </div>
+
+                        <!-- Resumo -->
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                            <div class="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-xl p-4">
+                                <div class="text-xs text-slate-400 mb-1">Investido</div>
+                                <div class="text-lg font-bold text-cyan-400">
+                                    R$ ${stats.totalInvested.toLocaleString('pt-BR', {minimumFractionDigits: 0, maximumFractionDigits: 0})}
+                                </div>
+                            </div>
+                            <div class="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-xl p-4">
+                                <div class="text-xs text-slate-400 mb-1">Atual</div>
+                                <div class="text-lg font-bold text-purple-400">
+                                    R$ ${stats.totalCurrent.toLocaleString('pt-BR', {minimumFractionDigits: 0, maximumFractionDigits: 0})}
+                                </div>
+                            </div>
+                            <div class="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-xl p-4">
+                                <div class="text-xs text-slate-400 mb-1">P&L</div>
+                                <div class="text-lg font-bold ${stats.totalPL >= 0 ? 'text-emerald-400' : 'text-red-400'}">
+                                    R$ ${stats.totalPL.toLocaleString('pt-BR', {minimumFractionDigits: 0, maximumFractionDigits: 0})}
+                                </div>
+                            </div>
+                            <div class="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-xl p-4">
+                                <div class="text-xs text-slate-400 mb-1">Retorno</div>
+                                <div class="text-lg font-bold ${stats.plPercent >= 0 ? 'text-emerald-400' : 'text-red-400'}">
+                                    ${stats.plPercent.toFixed(2)}%
+                                </div>
+                            </div>
+                        </div>
+
+                        ${expiringSoon > 0 ? `
+                        <div class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 mb-6">
+                            <div class="flex items-start gap-3">
+                                <span class="text-2xl">⚠️</span>
+                                <div>
+                                    <h3 class="font-semibold text-yellow-400 mb-1">Opções vencendo em breve</h3>
+                                    <p class="text-sm text-slate-300">
+                                        Você tem <strong>${expiringSoon} opções</strong> que vencem nos próximos 30 dias.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        ` : ''}
+
+                        <!-- Ativos -->
+                        <div class="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-xl p-4 mb-6">
+                            <h3 class="font-semibold mb-3 flex items-center justify-between">
+                                <span>Meus Ativos (${allAssets.length})</span>
+                                <button onclick="exportCSV()" class="text-xs bg-emerald-500 hover:bg-emerald-600 px-3 py-1 rounded">
+                                    Exportar CSV
+                                </button>
+                            </h3>
+                            <div class="space-y-2">
+                                ${allAssets.slice(0, 15).map(asset => `
+                                    <div class="flex justify-between items-center p-3 bg-slate-700/30 rounded-lg">
+                                        <div>
+                                            <div class="font-semibold text-sm">${asset.ticker}</div>
+                                            <div class="text-xs text-slate-400">${asset.type} • ${asset.qty} un.</div>
+                                        </div>
+                                        <div class="text-right">
+                                            <div class="text-sm font-semibold">
+                                                R$ ${asset.current.toLocaleString('pt-BR', {minimumFractionDigits: 0})}
+                                            </div>
+                                            <div class="text-xs ${asset.plPercent >= 0 ? 'text-emerald-400' : 'text-red-400'}">
+                                                ${asset.plPercent >= 0 ? '+' : ''}${asset.plPercent.toFixed(2)}%
+                                            </div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <!-- Opções -->
+                        <div class="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-xl p-4 mb-6">
+                            <h3 class="font-semibold mb-3">Opções (${allOptions.length})</h3>
+                            <div class="space-y-2">
+                                ${allOptions.map(opt => {
+                                    const days = getDaysToExpiry(opt.expiry);
+                                    const status = days < 0 ? 'VENCIDA' : days <= 7 ? days + 'd' : days <= 30 ? days + 'd' : days + 'd';
+                                    const statusColor = days < 0 ? 'text-red-500' : days <= 7 ? 'text-orange-500' : days <= 30 ? 'text-yellow-500' : 'text-emerald-500';
+                                    
+                                    return `
+                                    <div class="flex justify-between items-center p-3 bg-slate-700/30 rounded-lg">
+                                        <div>
+                                            <div class="font-semibold text-sm">${opt.ticker}</div>
+                                            <div class="text-xs text-slate-400">${opt.type} ${opt.strike} • ${new Date(opt.expiry).toLocaleDateString('pt-BR')}</div>
+                                        </div>
+                                        <div class="text-right">
+                                            <div class="text-sm font-semibold ${opt.pl >= 0 ? 'text-emerald-400' : 'text-red-400'}">
+                                                ${opt.pl >= 0 ? '+' : ''}${opt.pl.toFixed(2)}
+                                            </div>
+                                            <div class="text-xs ${statusColor}">
+                                                ${status}
+                                            </div>
+                                        </div>
+                                    </div>
+                                `}).join('')}
+                            </div>
+                        </div>
+
+                        <!-- Footer -->
+                        <div class="text-center text-xs text-slate-500 mt-8 pb-6">
+                            <p>Sistema de Gestão de Carteira v1.0</p>
+                            <p class="mt-1">Dados salvos localmente no seu dispositivo</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('root').innerHTML = html;
+        }
+
+        // Exportar CSV
+        function exportCSV() {
+            let csv = 'Ticker,Tipo,Quantidade,Preço Médio,Preço Atual,Investido,Valor Atual,P&L,Retorno %\n';
+            
+            allAssets.forEach(asset => {
+                csv += `${asset.ticker},${asset.type},${asset.qty},${asset.avgPrice},${asset.currentPrice},${asset.invested},${asset.current},${asset.pl},${asset.plPercent}\n`;
+            });
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'carteira-' + new Date().toISOString().split('T')[0] + '.csv';
+            a.click();
+        }
+
+        // Inicializar
+        render();
+        
+        // Salvar dados
+        localStorage.setItem('portfolioAssets', JSON.stringify(allAssets));
+        localStorage.setItem('portfolioOptions', JSON.stringify(allOptions));
+    </script>
+
+    <!-- Service Worker -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('service-worker.js')
+                    .then(reg => console.log('✅ Service Worker registrado'))
+                    .catch(err => console.log('❌ Erro no Service Worker:', err));
+            });
+        }
+
+        // PWA Install Prompt
+        let deferredPrompt;
+        const installPrompt = document.getElementById('installPrompt');
+        const installBtn = document.getElementById('installBtn');
+        const dismissBtn = document.getElementById('dismissBtn');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            setTimeout(() => {
+                if (!localStorage.getItem('installDismissed')) {
+                    installPrompt.style.display = 'block';
+                }
+            }, 3000);
+        });
+
+        if (installBtn) {
+            installBtn.addEventListener('click', async () => {
+                if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    const { outcome } = await deferredPrompt.userChoice;
+                    deferredPrompt = null;
+                    installPrompt.style.display = 'none';
+                }
+            });
+        }
+
+        if (dismissBtn) {
+            dismissBtn.addEventListener('click', () => {
+                installPrompt.style.display = 'none';
+                localStorage.setItem('installDismissed', 'true');
+            });
+        }
+    </script>
+</body>
+</html>
